@@ -92,30 +92,24 @@ function zone(state: GameState, index: number, niveau: number): number[] {
   return cases;
 }
 
-/** Fait sur une parcelle le geste qui a du sens à ce moment-là. */
-export function agirSurParcelle(state: GameState, index: number): Resultat {
+/** Dit quel geste a du sens sur cette parcelle et quelles cases il toucherait, sans rien changer. */
+export function prevoirGeste(state: GameState, index: number): Resultat {
   const p = state.parcelles[index];
   if (!p || !estActive(state, index)) return { geste: null, cases: [] };
 
   if (!p.bechee) {
     const cases = zone(state, index, state.outils.beche).filter((i) => !state.parcelles[i].bechee);
-    for (const i of cases) state.parcelles[i].bechee = true;
     return { geste: 'becher', cases };
   }
 
   if (!p.plante) {
-    const graine = graineASemer(state);
-    if (!graine) {
-      const saison = saisonDuJour(state.jour);
-      const deSaison = IDS_CULTURES.filter((id) => state.graines[id] > 0 && CULTURES[id].saison === saison);
-      let message = 'Plus de graines : passe à la boutique';
-      if (deSaison.length > 0) message = 'Trop tard pour semer : la saison se termine';
-      else if (IDS_CULTURES.some((id) => state.graines[id] > 0)) message = 'Tes graines ne poussent pas en cette saison';
-      return { geste: null, cases: [], message };
-    }
-    state.graines[graine] -= 1;
-    p.plante = { culture: graine, stade: 0 };
-    return { geste: 'semer', cases: [index] };
+    if (graineASemer(state)) return { geste: 'semer', cases: [index] };
+    const saison = saisonDuJour(state.jour);
+    const deSaison = IDS_CULTURES.filter((id) => state.graines[id] > 0 && CULTURES[id].saison === saison);
+    let message = 'Plus de graines : passe à la boutique';
+    if (deSaison.length > 0) message = 'Trop tard pour semer : la saison se termine';
+    else if (IDS_CULTURES.some((id) => state.graines[id] > 0)) message = 'Tes graines ne poussent pas en cette saison';
+    return { geste: null, cases: [], message };
   }
 
   if (estMure(p.plante)) {
@@ -123,12 +117,6 @@ export function agirSurParcelle(state: GameState, index: number): Resultat {
       const plante = state.parcelles[i].plante;
       return plante !== null && estMure(plante);
     });
-    for (const i of cases) {
-      const q = state.parcelles[i];
-      state.recoltes[q.plante!.culture] += 1;
-      q.plante = null;
-      q.arrosee = false;
-    }
     return { geste: 'recolter', cases };
   }
 
@@ -137,11 +125,41 @@ export function agirSurParcelle(state: GameState, index: number): Resultat {
       const q = state.parcelles[i];
       return q.bechee && !q.arrosee && q.plante !== null && !estMure(q.plante);
     });
-    for (const i of cases) state.parcelles[i].arrosee = true;
     return { geste: 'arroser', cases };
   }
 
   return { geste: null, cases: [], message: 'Déjà arrosé : va dormir pour que ça pousse' };
+}
+
+/** Fait sur une parcelle le geste prévu par `prevoirGeste`. */
+export function agirSurParcelle(state: GameState, index: number): Resultat {
+  const prevu = prevoirGeste(state, index);
+  for (const i of prevu.cases) {
+    const p = state.parcelles[i];
+    switch (prevu.geste) {
+      case 'becher':
+        p.bechee = true;
+        break;
+      case 'semer': {
+        const graine = graineASemer(state);
+        if (!graine) break;
+        state.graines[graine] -= 1;
+        p.plante = { culture: graine, stade: 0 };
+        break;
+      }
+      case 'arroser':
+        p.arrosee = true;
+        break;
+      case 'recolter':
+        state.recoltes[p.plante!.culture] += 1;
+        p.plante = null;
+        p.arrosee = false;
+        // La terre est retournée par la récolte : il faudra bêcher à nouveau avant de replanter.
+        p.bechee = false;
+        break;
+    }
+  }
+  return prevu;
 }
 
 // ---------------------------------------------------------------- La nuit

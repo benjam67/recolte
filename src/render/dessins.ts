@@ -414,6 +414,87 @@ const DESSINS_RECETTES: Record<RecetteId, (c: C) => void> = {
   },
 };
 
+// ---------------------------------------------------------------- Outils
+
+type OutilDessine = 'beche' | 'arrosoir' | 'panier' | 'graines';
+/** La couleur du métal selon le niveau : fer, argent, or. */
+const METAUX = ['#a9b0b8', '#cfe6f7', '#f5c542'];
+
+function dessinerOutil(c: C, outil: OutilDessine, niveau: number): void {
+  const metal = METAUX[Math.min(niveau, METAUX.length) - 1];
+  switch (outil) {
+    case 'beche':
+      c.save();
+      c.translate(64, 64);
+      c.rotate(0.6);
+      rectangle(c, BOIS, -5, -56, 10, 70, 4);
+      rectangle(c, BOIS, -16, -62, 32, 10, 4);
+      rectangle(c, metal, -19, 10, 38, 46, 9);
+      c.restore();
+      reflet(c, 40, 92, 6);
+      break;
+    case 'arrosoir':
+      polygone(c, metal, [84, 66, 116, 36, 122, 44, 88, 88]);
+      ellipse(c, metal, 120, 38, 9, 6, 0.8);
+      c.save();
+      c.lineWidth = 9;
+      c.beginPath();
+      c.arc(34, 78, 22, Math.PI * 0.5, Math.PI * 1.5);
+      c.stroke();
+      c.lineWidth = 3;
+      c.strokeStyle = metal;
+      c.stroke();
+      c.restore();
+      rectangle(c, metal, 32, 48, 56, 62, 10);
+      ellipse(c, '#7fb6e6', 60, 50, 26, 7);
+      reflet(c, 46, 70, 7);
+      break;
+    case 'panier':
+      c.save();
+      c.lineWidth = 9;
+      c.beginPath();
+      c.arc(64, 62, 36, Math.PI, 0);
+      c.stroke();
+      c.lineWidth = 3;
+      c.strokeStyle = '#cf9a5c';
+      c.stroke();
+      c.restore();
+      c.beginPath();
+      c.moveTo(18, 62);
+      c.quadraticCurveTo(24, 116, 64, 116);
+      c.quadraticCurveTo(104, 116, 110, 62);
+      c.closePath();
+      c.fillStyle = '#cf9a5c';
+      c.fill();
+      c.stroke();
+      c.save();
+      c.lineWidth = 3;
+      c.beginPath();
+      for (const x of [40, 64, 88]) {
+        c.moveTo(x, 70);
+        c.lineTo(x, 112);
+      }
+      c.moveTo(24, 88);
+      c.lineTo(104, 88);
+      c.stroke();
+      c.restore();
+      rectangle(c, metal, 14, 56, 100, 12, 5);
+      break;
+    case 'graines':
+      polygone(c, '#ecd9b4', [38, 44, 90, 44, 100, 118, 28, 118]);
+      polygone(c, '#ecd9b4', [40, 44, 88, 44, 96, 20, 32, 20]);
+      rectangle(c, '#6dba55', 36, 38, 56, 10, 4);
+      for (const [x, y] of [
+        [52, 76],
+        [74, 80],
+        [62, 98],
+      ]) {
+        ellipse(c, '#f2e4b4', x, y, 7, 5, 0.4);
+      }
+      break;
+  }
+}
+
 // ---------------------------------------------------------------- Décorations
 
 function potDeFleurs(c: C, couleur: string): void {
@@ -649,6 +730,11 @@ export function iconeCulture(id: CultureId): string {
 
 export function iconeRecette(id: RecetteId): string {
   return enAdresse(`recette:${id}`, DESSINS_RECETTES[id]);
+}
+
+/** `niveau` change la couleur du métal (1 = fer, 2 = argent, 3 = or). */
+export function iconeOutil(outil: OutilDessine, niveau = 1): string {
+  return enAdresse(`outil:${outil}:${niveau}`, (c) => dessinerOutil(c, outil, niveau));
 }
 
 export function iconeDeco(id: DecoId): string {

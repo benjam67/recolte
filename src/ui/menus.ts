@@ -18,7 +18,7 @@ import {
   TERRAINS,
 } from '../game/reglages';
 import { annee, saisonDuJour, type GameState } from '../game/state';
-import { iconeCulture, iconeDeco, iconeRecette } from '../render/dessins';
+import { iconeCulture, iconeDeco, iconeOutil, iconeRecette } from '../render/dessins';
 import { el } from './hud';
 
 export type Onglet = 'sac' | 'graines' | 'outils' | 'ferme' | 'deco' | 'partie';
@@ -135,7 +135,7 @@ function pageOutils(s: GameState): string {
         cout !== null
           ? bouton(`Améliorer · ${prix(cout)}`, 'ameliorer-outil', { id, actif: s.argent >= cout, style: 'principal' })
           : bouton('Au maximum', '', { actif: false });
-      return ligne(String(niveau), OUTILS[id].nom, detail, action);
+      return ligne(iconeOutil(id, niveau), OUTILS[id].nom, detail, action);
     }).join('')
   );
 }
@@ -246,6 +246,7 @@ export function creerMenus(etat: () => GameState, surAction: (action: ActionMenu
   const menu = el('menu');
   const onglets = el('onglets');
   const contenu = el('menu-contenu');
+  const argent = el('menu-argent');
   let onglet: Onglet = 'sac';
   let atelier = false;
   let confirmation = false;
@@ -253,6 +254,7 @@ export function creerMenus(etat: () => GameState, surAction: (action: ActionMenu
   function rafraichir(): void {
     if (menu.hidden) return;
     const s = etat();
+    argent.textContent = String(s.argent);
     const defilement = contenu.scrollTop;
     if (atelier) {
       onglets.innerHTML = '<h2>Atelier</h2>';

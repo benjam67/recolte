@@ -3,7 +3,7 @@
 
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { stadeVisuel } from '../game/actions';
+import { estMure, stadeVisuel, type Geste } from '../game/actions';
 import type { Saison } from '../game/reglages';
 import { estActive, saisonDuJour, type GameState } from '../game/state';
 import { ATELIER, MAISON, positionParcelle } from '../game/terrain';
@@ -37,11 +37,21 @@ function creerImageDebout(texture: THREE.Texture | null, taille: number): THREE.
   return image;
 }
 
+/** Un geste en cours sur une parcelle : lequel, et où il en est (de 0 à 1). */
+export type Chantier = Map<number, { geste: Geste; progres: number }>;
+
 interface VueParcelle {
   groupe: THREE.Group;
   sol: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
+  /** Les trois sillons creusés par la bêche. */
+  sillons: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>[];
+  /** Les trois graines posées dans la terre. */
+  graines: THREE.Mesh[];
   plante: THREE.Sprite;
   ombre: THREE.Mesh;
+  etat: 'herbe' | 'terre' | 'mouillee';
+  /** 'vide', 'graines' (tout juste semé), 'pousse' ou 'mure'. */
+  culture: 'vide' | 'graines' | 'pousse' | 'mure';
   /** Ce qui est affiché, pour repérer les changements. */
   cle: string;
   /** Petit rebond quand la plante change (de 1 à 0). */
@@ -76,7 +86,7 @@ function creerBatiment(couleurMurs: string, couleurToit: string, large: number, 
   return groupe;
 }
 
-export function creerMonde(scene: THREE.Scene, state: GameState): Monde {
+export function creerMonde(scene: THREE.Scene, state: GameState, chantier: Chantier): Monde {
   const imagesDebout: THREE.SpriteMaterial[] = [];
   const suivre = (image: THREE.Sprite) => {
     imagesDebout.push(image.material);
@@ -164,7 +174,9 @@ export function creerMonde(scene: THREE.Scene, state: GameState): Monde {
 
   // --- Parcelles ---
   const geoParcelle = new RoundedBoxGeometry(1, 0.1, 1, 3, 0.04);
-  const matHerbe = new THREE.MeshStandardMaterial({ color: '#8cc46b' });
+  const geoSillon = new RoundedBoxGeometry(0.84, 0.05, 0.13, 2, 0.02);
+  const geoGraine = new THREE.SphereGeometry(0.055, 10, 8);
+  const matGraine = new THREE.MeshStandardMaterial({ color: '#f2e4b4' });
   const vues: VueParcelle[] = state.parcelles.map((_, i) => {
     const pos = positionParcelle(i);
     const groupe = new THREE.Group();
@@ -172,15 +184,36 @@ export function creerMonde(scene: THREE.Scene, state: GameState): Monde {
     const solParcelle = new THREE.Mesh(geoParcelle, new THREE.MeshStandardMaterial({ color: '#8cc46b' }));
     solParcelle.position.y = 0.03;
     solParcelle.receiveShadow = true;
+    groupe.add(solParcelle);
+
+    const sillons = [-0.3, 0, 0.3].map((z) => {
+      const sillon = new THREE.Mesh(geoSillon, new THREE.MeshStandardMaterial({ color: '#8f6d47' }));
+      sillon.position.set(0, 0.075, z);
+      sillon.receiveShadow = true;
+      groupe.add(sillon);
+      return sillon;
+    });
+    const graines = [
+      [-0.22, -0.15],
+      [0.04, 0.15],
+      [0.26, -0.14],
+    ].map(([x, z]) => {
+      const graine = new THREE.Mesh(geoGraine, matGraine);
+      graine.position.set(x, 0.13, z);
+      graine.scale.y = 0.7;
+      groupe.add(graine);
+      return graine;
+    });
+
     const plante = suivre(creerImageDebout(null, 1.05));
     plante.position.y = 0.08;
     plante.visible = false;
     const ombre = creerOmbre(0.62);
-    ombre.position.y = 0.09;
+    ombre.position.y = 0.11;
     ombre.visible = false;
-    groupe.add(solParcelle, ombre, plante);
+    groupe.add(ombre, plante);
     scene.add(groupe);
-    return { groupe, sol: solParcelle, plante, ombre, cle: '', rebond: 0 };
+    return { groupe, sol: solParcelle, sillons, graines, plante, ombre, etat: 'herbe', culture: 'vide', cle: '', rebond: 0 };
   });
 
   // --- Décorations posées ---
@@ -201,14 +234,16 @@ export function creerMonde(scene: THREE.Scene, state: GameState): Monde {
       const vue = vues[i];
       vue.groupe.visible = estActive(s, i);
       if (!vue.groupe.visible) return;
-      vue.sol.userData.etat = !p.bechee ? 'herbe' : p.arrosee ? 'mouillee' : 'terre';
+      vue.etat = !p.bechee ? 'herbe' : p.arrosee ? 'mouillee' : 'terre';
+      vue.culture = !p.plante ? 'vide' : p.plante.stade === 0 ? 'graines' : estMure(p.plante) ? 'mure' : 'pousse';
 
       const cle = p.plante ? `${p.plante.culture}:${stadeVisuel(p.plante)}` : '';
       if (cle !== vue.cle) {
         vue.cle = cle;
-        vue.plante.visible = p.plante !== null;
-        vue.ombre.visible = p.plante !== null && p.plante.stade > 0;
-        if (p.plante) {
+        // Tout juste semé, on voit les graines dans la terre ; l'image n'arrive qu'à la première pousse.
+        vue.plante.visible = p.plante !== null && p.plante.stade > 0;
+        vue.ombre.visible = vue.plante.visible;
+        if (p.plante && p.plante.stade > 0) {
           vue.plante.material.map = texturePlante(p.plante.culture, stadeVisuel(p.plante));
           vue.rebond = 1;
         }
@@ -235,6 +270,9 @@ export function creerMonde(scene: THREE.Scene, state: GameState): Monde {
   synchroniser(state);
 
   const herbeParcelle = new THREE.Color();
+  const sillonSec = new THREE.Color('#8f6d47');
+  const sillonMouille = new THREE.Color('#58402a');
+  let temps = 0;
 
   return {
     maison,
@@ -245,17 +283,47 @@ export function creerMonde(scene: THREE.Scene, state: GameState): Monde {
       matSol.color.copy(a.sol);
       matTache.color.copy(a.sol).multiplyScalar(0.94);
       herbeParcelle.copy(a.sol).multiplyScalar(0.86);
-      matHerbe.color.copy(herbeParcelle);
-      for (const vue of vues) {
-        const etat = vue.sol.userData.etat as string;
-        vue.sol.material.color.copy(etat === 'herbe' ? herbeParcelle : etat === 'mouillee' ? TERRE_MOUILLEE : TERRE);
-      }
       for (const materiau of imagesDebout) materiau.color.copy(a.teinte);
       // La nuit, les fenêtres s'allument.
       vitre.emissiveIntensity = Math.max(0, 1 - a.soleilIntensite / 1.2) * 1.6;
+
+      // Les parcelles : leur état, plus le geste en cours qui fait évoluer la terre petit à petit.
+      vues.forEach((vue, i) => {
+        if (!vue.groupe.visible) return;
+        const enCours = chantier.get(i);
+        const couleur = vue.sol.material.color;
+        let nbSillons = vue.etat === 'herbe' ? 0 : 3;
+        let nbGraines = vue.culture === 'graines' ? 3 : 0;
+        let humidite = vue.etat === 'mouillee' ? 1 : 0;
+        let secousse = 0;
+
+        couleur.copy(vue.etat === 'herbe' ? herbeParcelle : TERRE);
+        if (enCours?.geste === 'becher' && vue.etat === 'herbe') {
+          couleur.lerp(TERRE, enCours.progres);
+          nbSillons = Math.floor(enCours.progres * 3.2);
+        } else if (enCours?.geste === 'semer' && vue.culture === 'vide' && vue.etat !== 'herbe') {
+          nbGraines = Math.floor(enCours.progres * 3.2);
+        } else if (enCours?.geste === 'arroser' && vue.etat === 'terre') {
+          humidite = enCours.progres;
+        } else if (enCours?.geste === 'recolter' && vue.culture === 'mure') {
+          secousse = enCours.progres;
+        }
+        couleur.lerp(TERRE_MOUILLEE, humidite);
+
+        vue.sillons.forEach((sillon, n) => {
+          sillon.visible = n < nbSillons;
+          sillon.material.color.copy(sillonSec).lerp(sillonMouille, humidite);
+        });
+        vue.graines.forEach((graine, n) => (graine.visible = n < nbGraines));
+
+        // À la récolte, la plante se secoue de plus en plus fort et sort de terre.
+        vue.plante.material.rotation = secousse > 0 ? Math.sin(temps * 34) * 0.16 * secousse : 0;
+        vue.plante.position.y = 0.08 + secousse * 0.14;
+      });
     },
 
     animer(dt) {
+      temps += dt;
       for (const vue of vues) {
         if (vue.rebond <= 0) continue;
         vue.rebond = Math.max(0, vue.rebond - dt * 4);

@@ -23,6 +23,20 @@ export const DEPART = {
   graines: { radis: 5 } as Record<string, number>,
 };
 
+// ---------------------------------------------------------------- Gestes
+
+/**
+ * L'effort demandé pour chaque geste. Plus le nombre est grand, plus le geste est long.
+ * Pour tout ralentir ou accélérer d'un coup, change plutôt DISTANCE_PAR_EFFORT.
+ */
+export const EFFORT = { becher: 1, semer: 0.5, arroser: 0.7, recolter: 0.6 };
+
+/** La distance à frotter du doigt pour un effort de 1, en hauteurs d'écran. */
+export const DISTANCE_PAR_EFFORT = 2.5;
+
+/** Ce qu'un simple toucher fait avancer : 0.25 = quatre touchers pour un effort de 1. */
+export const EFFORT_PAR_TOUCHER = 0.25;
+
 // ---------------------------------------------------------------- Cultures
 
 interface Culture {

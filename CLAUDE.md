@@ -19,6 +19,13 @@ points de décision de la roadmap (fin des phases 1, 2 et 6) restent à passer.
 - Phase 6 (tutoriel, sons, équilibrage) et phase 7 (stores) : pas commencées. Seuls quelques conseils
   s'affichent pendant les trois premiers jours.
 
+Retours du premier test (11 octobre), intégrés : les gestes demandent de frotter la parcelle (ou de la
+toucher plusieurs fois) et la terre change au fur et à mesure ; le chat tient l'outil du geste ; il faut
+rebêcher après une récolte ; l'argent est visible dans le menu ; plein écran (bouton sur Android, ajout à
+l'écran d'accueil sur iPhone). La durée des gestes se règle dans `EFFORT` et `DISTANCE_PAR_EFFORT`.
+
+Le jeu est en ligne sur https://benjam67.github.io/recolte/ : chaque push sur `main` le met à jour.
+
 Décisions prises par défaut, à confirmer par le joueur : contrôle au toucher ; hiver avec ses trois
 cultures ; français seul ; chat gris à foulard rouge et chatte rousse à fleur rose ; une graine ne peut
 pas être semée s'il reste trop peu de nuits pour qu'elle mûrisse ; la neige n'arrose pas.

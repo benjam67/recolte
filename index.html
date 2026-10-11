@@ -7,6 +7,14 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
     <meta name="theme-color" content="#a2d67e" />
+    <!-- Pour s'installer sur l'écran d'accueil et s'ouvrir en plein écran, sans la barre du navigateur. -->
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Ferme aux chats" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="icon" type="image/png" href="./icon-192.png" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&display=swap" />
     <title>Ferme aux chats</title>
   </head>
@@ -19,6 +27,12 @@
         <span class="pastille" id="hud-meteo"></span>
         <span class="pastille"><i class="piece"></i><span id="hud-argent">0</span></span>
       </div>
+      <button id="btn-plein-ecran" type="button" aria-label="Plein écran" hidden>
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+          <path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </button>
+      <div id="jauge" hidden><img alt="" /></div>
       <div id="graines"></div>
       <div id="hud-boutons">
         <button id="btn-sac" type="button">Sac et boutique</button>
@@ -40,6 +54,7 @@
       <div class="panneau">
         <header>
           <nav id="onglets"></nav>
+          <span class="pastille" id="menu-pastille"><i class="piece"></i><span id="menu-argent">0</span></span>
           <button id="menu-fermer" type="button" aria-label="Fermer">✕</button>
         </header>
         <div id="menu-contenu" class="liste"></div>

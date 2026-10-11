@@ -4,6 +4,9 @@ import * as regles from './game/actions';
 import {
   CULTURES,
   DECORATIONS,
+  DISTANCE_PAR_EFFORT,
+  EFFORT,
+  EFFORT_PAR_TOUCHER,
   IDS_DECOS,
   NOMS_SAISONS,
   OUTILS,
@@ -24,20 +27,24 @@ import {
   positionParcelle,
 } from './game/terrain';
 import { calculerAmbiance, creerAmbiance } from './render/ambiance';
-import { APPARENCES, creerChat, portraitChat, type Chat } from './render/chat';
+import { APPARENCES, creerChat, portraitChat, type Chat, type OutilEnMain } from './render/chat';
+import { iconeOutil } from './render/dessins';
 import { creerParticules } from './render/meteo';
-import { creerMonde } from './render/monde';
+import { creerMonde, type Chantier } from './render/monde';
 import { creerScene } from './render/scene';
 import { charger, effacer, sauvegarder } from './sauvegarde';
 import { creerHud, el } from './ui/hud';
 import { creerMenus, type ActionMenu } from './ui/menus';
+import { installerPleinEcran } from './ui/pleinEcran';
 
 // L'état du jeu : séparé de l'affichage (voir CLAUDE.md).
 const state = charger();
 
 const canvas = document.querySelector<HTMLCanvasElement>('#scene')!;
 const vue = creerScene(canvas);
-const monde = creerMonde(vue.scene, state);
+/** Les gestes commencés sur les parcelles, et où ils en sont : le décor s'en sert pour montrer la terre qui change. */
+const chantier: Chantier = new Map();
+const monde = creerMonde(vue.scene, state, chantier);
 const particules = creerParticules(vue.scene);
 const ambiance = creerAmbiance();
 const hud = creerHud();
@@ -75,33 +82,121 @@ function installerChat(personnage: Personnage): void {
   vue.scene.add(chat.objet);
 }
 
-const CONSEILS_DEBUT: Record<regles.Geste, string> = {
-  becher: 'Bien bêché ! Touche encore la parcelle pour semer',
-  semer: 'Semé ! Touche encore pour arroser',
+// ---------------------------------------------------------------- Les gestes : bêcher, semer, arroser, récolter
+//
+// Toucher une parcelle y envoie le chat. Une fois sur place, il sort l'outil qu'il faut, et le joueur
+// frotte la parcelle du doigt (ou la touche plusieurs fois) pour faire avancer le geste.
+
+interface Travail {
+  index: number;
+  geste: regles.Geste;
+  /** Les parcelles concernées (plusieurs avec un outil amélioré). */
+  cases: number[];
+  /** De 0 à 1. */
+  progres: number;
+}
+let travail: Travail | null = null;
+/** La parcelle devant laquelle le chat se tient, prêt à travailler. */
+let surPlace: number | null = null;
+/** Un toucher donné pendant que le chat marchait : il comptera à l'arrivée. */
+let toucherEnAttente = false;
+
+const OUTIL_DU_GESTE: Record<regles.Geste, OutilEnMain> = {
+  becher: 'beche',
+  semer: 'graines',
+  arroser: 'arrosoir',
+  recolter: 'panier',
+};
+
+function niveauOutil(geste: regles.Geste): number {
+  if (geste === 'becher') return state.outils.beche;
+  if (geste === 'arroser') return state.outils.arrosoir;
+  if (geste === 'recolter') return state.outils.panier;
+  return 1;
+}
+
+const CONSEILS_GESTE: Record<regles.Geste, string> = {
+  becher: 'Frotte la parcelle du doigt pour la bêcher',
+  semer: 'Frotte encore pour semer',
+  arroser: 'Frotte encore pour arroser',
+  recolter: 'Frotte la plante pour la récolter',
+};
+const CONSEILS_APRES: Partial<Record<regles.Geste, string>> = {
   arroser: 'Arrosé ! Va dormir pour que ça pousse : touche la maison',
   recolter: 'Récolté ! Vends ta récolte dans « Sac et boutique »',
 };
 const conseilsDonnes = new Set<string>();
 
+function conseiller(cle: string, texte: string | undefined): void {
+  if (!texte || state.jour > 3 || conseilsDonnes.has(cle)) return;
+  conseilsDonnes.add(cle);
+  hud.message(texte);
+}
+
+/** Le chat s'éloigne ou fait autre chose : il range son outil. Le geste commencé reste dans la terre. */
+function quitterTravail(): void {
+  travail = null;
+  surPlace = null;
+  toucherEnAttente = false;
+  chat?.tenir(null);
+}
+
 function allerSurParcelle(index: number): void {
+  if (surPlace === index && file.length === 0) return; // déjà sur place
+  quitterTravail();
   const p = positionParcelle(index);
-  file.push({
-    // Le chat se place derrière la parcelle : il fait ainsi face au joueur pendant qu'il travaille.
-    x: p.x - 0.4,
-    z: p.z - 0.4,
-    regard: p,
-    arrivee: () => {
-      const resultat = regles.agirSurParcelle(state, index);
-      if (resultat.geste) chat?.sauter();
-      if (resultat.message) hud.message(resultat.message);
-      // Les tout premiers gestes sont accompagnés d'un conseil.
-      else if (resultat.geste && state.jour <= 3 && !conseilsDonnes.has(resultat.geste)) {
-        conseilsDonnes.add(resultat.geste);
-        hud.message(CONSEILS_DEBUT[resultat.geste]);
-      }
-      rafraichir();
+  file = [
+    {
+      // Le chat se place derrière la parcelle : il fait ainsi face au joueur pendant qu'il travaille.
+      x: p.x - 0.4,
+      z: p.z - 0.4,
+      regard: p,
+      arrivee: () => {
+        surPlace = index;
+        preparerTravail(true);
+        if (toucherEnAttente) avancerTravail(EFFORT_PAR_TOUCHER);
+        toucherEnAttente = false;
+      },
     },
-  });
+  ];
+}
+
+/** Regarde ce qu'il y a à faire sur la parcelle où se tient le chat, et sort le bon outil. */
+function preparerTravail(avecMessage: boolean): void {
+  if (surPlace === null) return;
+  const prevu = regles.prevoirGeste(state, surPlace);
+  if (!prevu.geste) {
+    travail = null;
+    chat?.tenir(null);
+    if (avecMessage && prevu.message) hud.message(prevu.message);
+    return;
+  }
+  // On reprend un geste déjà commencé sur cette parcelle.
+  const commence = chantier.get(surPlace);
+  const progres = commence && commence.geste === prevu.geste ? commence.progres : 0;
+  travail = { index: surPlace, geste: prevu.geste, cases: prevu.cases, progres };
+  chat?.tenir(OUTIL_DU_GESTE[prevu.geste], niveauOutil(prevu.geste));
+  conseiller(`geste:${prevu.geste}`, CONSEILS_GESTE[prevu.geste]);
+}
+
+/** Fait avancer le geste en cours. `effort` est dans l'unité des réglages (voir EFFORT). */
+function avancerTravail(effort: number): void {
+  if (!travail) return;
+  travail.progres += effort / EFFORT[travail.geste];
+  chat?.travailler();
+  for (const i of travail.cases) chantier.set(i, { geste: travail.geste, progres: Math.min(1, travail.progres) });
+  if (travail.progres < 1) return;
+
+  // Le geste est terminé : on l'applique pour de bon.
+  const fini = travail;
+  travail = null;
+  for (const i of fini.cases) chantier.delete(i);
+  regles.agirSurParcelle(state, fini.index);
+  chat?.sauter();
+  rafraichir();
+  conseiller(`apres:${fini.geste}`, CONSEILS_APRES[fini.geste]);
+  // S'il reste quelque chose à faire sur cette parcelle, le chat change d'outil et on continue.
+  preparerTravail(false);
 }
 
 // ---------------------------------------------------------------- La nuit
@@ -118,6 +213,7 @@ function allerDormir(): void {
   if (nuit || !chat) return;
   if (modeDeco) quitterDeco();
   menus.fermer();
+  quitterTravail();
   file = [
     {
       x: PORTE_MAISON.x,
@@ -145,6 +241,7 @@ function animerNuit(dt: number): void {
   // Au milieu de la nuit : les plantes poussent, le jour suivant commence.
   if (!nuit.bilan && t >= DUREE_COUCHER + DUREE_NUIT / 2) {
     nuit.bilan = regles.dormir(state);
+    chantier.clear(); // les gestes commencés la veille sont oubliés
     rafraichir();
   }
 
@@ -187,6 +284,7 @@ let decoChoisie: DecoId | null = null;
 function entrerDeco(): void {
   modeDeco = true;
   file = [];
+  quitterTravail();
   menus.fermer();
   if (!decoChoisie || state.decoStock[decoChoisie] <= 0) {
     decoChoisie = IDS_DECOS.find((id) => state.decoStock[id] > 0) ?? null;
@@ -223,28 +321,72 @@ function toucherEnModeDeco(x: number, z: number): void {
 const rayon = new THREE.Raycaster();
 const planSol = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const pointSol = new THREE.Vector3();
-let depart: { x: number; y: number } | null = null;
+const pointEcran = new THREE.Vector3();
 
-canvas.addEventListener('pointerdown', (e) => {
-  depart = { x: e.clientX, y: e.clientY };
-});
+/** Le doigt posé sur l'écran : où il est, la parcelle visée, et la distance déjà parcourue. */
+let doigt: { x: number; y: number; index: number | null; chemin: number } | null = null;
+/** En dessous de cette distance (en pixels), c'est un simple toucher et pas un frottement. */
+const SEUIL_FROTTEMENT = 12;
 
-canvas.addEventListener('pointerup', (e) => {
-  if (!depart || nuit || !chat) return;
-  const bouge = Math.hypot(e.clientX - depart.x, e.clientY - depart.y);
-  depart = null;
-  if (bouge > 12) return; // un glissement, pas un toucher
-
+/** Lance un rayon depuis ce point de l'écran. Renvoie true s'il touche le sol (le point est dans `pointSol`). */
+function viser(e: PointerEvent): boolean {
   const cadre = canvas.getBoundingClientRect();
   const souris = new THREE.Vector2(
     ((e.clientX - cadre.left) / cadre.width) * 2 - 1,
     -((e.clientY - cadre.top) / cadre.height) * 2 + 1,
   );
   rayon.setFromCamera(souris, vue.camera);
-  const surLeSol = rayon.ray.intersectPlane(planSol, pointSol) !== null;
+  return rayon.ray.intersectPlane(planSol, pointSol) !== null;
+}
+
+canvas.addEventListener('pointerdown', (e) => {
+  if (nuit || !chat) return;
+  canvas.setPointerCapture(e.pointerId);
+  const surLeSol = viser(e);
+  const surBatiment =
+    rayon.intersectObject(monde.maison, true).length > 0 ||
+    (state.atelier && rayon.intersectObject(monde.atelier, true).length > 0);
+  const index =
+    surLeSol && !modeDeco && !surBatiment ? parcelleSous(pointSol.x, pointSol.z, tailleTerrain(state)) : null;
+  doigt = { x: e.clientX, y: e.clientY, index, chemin: 0 };
+  // Dès que le doigt se pose sur une parcelle, le chat s'y rend.
+  if (index !== null) allerSurParcelle(index);
+});
+
+canvas.addEventListener('pointermove', (e) => {
+  if (!doigt) return;
+  const pas = Math.hypot(e.clientX - doigt.x, e.clientY - doigt.y);
+  doigt.x = e.clientX;
+  doigt.y = e.clientY;
+  doigt.chemin += pas;
+  // Frotter fait avancer le geste, une fois le chat arrivé devant la parcelle.
+  if (doigt.index !== null && doigt.index === surPlace && doigt.chemin > SEUIL_FROTTEMENT) {
+    avancerTravail(pas / (window.innerHeight * DISTANCE_PAR_EFFORT));
+  }
+});
+
+canvas.addEventListener('pointercancel', () => {
+  doigt = null;
+});
+
+canvas.addEventListener('pointerup', (e) => {
+  const d = doigt;
+  doigt = null;
+  if (!d || nuit || !chat) return;
+  if (d.chemin > SEUIL_FROTTEMENT) return; // c'était un frottement ou un glissement, pas un toucher
+
+  const surLeSol = viser(e);
 
   if (modeDeco) {
     if (surLeSol) toucherEnModeDeco(pointSol.x, pointSol.z);
+    return;
+  }
+
+  // Toucher une parcelle : chaque toucher fait avancer un peu le geste.
+  if (d.index !== null) {
+    if (surPlace !== d.index) toucherEnAttente = true; // le chat est encore en route
+    else if (travail) avancerTravail(EFFORT_PAR_TOUCHER);
+    else preparerTravail(true);
     return;
   }
 
@@ -254,6 +396,7 @@ canvas.addEventListener('pointerup', (e) => {
     return;
   }
   if (state.atelier && rayon.intersectObject(monde.atelier, true).length > 0) {
+    quitterTravail();
     file = [
       {
         x: PORTE_ATELIER.x,
@@ -265,21 +408,16 @@ canvas.addEventListener('pointerup', (e) => {
     return;
   }
 
+  // Toucher le sol : le chat y va.
   if (!surLeSol) return;
-  const index = parcelleSous(pointSol.x, pointSol.z, tailleTerrain(state));
-  if (index !== null) {
-    // Les touchers sur plusieurs parcelles s'enchaînent.
-    allerSurParcelle(index);
-  } else {
-    // Toucher le sol : le chat y va, et oublie ce qui était prévu.
-    const max = bordMax(tailleTerrain(state));
-    file = [
-      {
-        x: THREE.MathUtils.clamp(pointSol.x, BORD_MIN, max),
-        z: THREE.MathUtils.clamp(pointSol.z, BORD_MIN, max),
-      },
-    ];
-  }
+  quitterTravail();
+  const max = bordMax(tailleTerrain(state));
+  file = [
+    {
+      x: THREE.MathUtils.clamp(pointSol.x, BORD_MIN, max),
+      z: THREE.MathUtils.clamp(pointSol.z, BORD_MIN, max),
+    },
+  ];
 });
 
 // ---------------------------------------------------------------- Boutons et menus
@@ -299,6 +437,7 @@ hud.surGraine((id) => {
   }
   state.graineChoisie = id;
   rafraichir();
+  preparerTravail(false);
 });
 hud.surChoixDeco((id) => {
   decoChoisie = id;
@@ -367,6 +506,8 @@ function traiterActionMenu(action: ActionMenu): void {
   if (erreur) hud.message(erreur);
   else if (message) hud.message(message);
   rafraichir();
+  // Un achat peut changer ce qu'il y a à faire là où se tient le chat (nouvelles graines, outil amélioré).
+  preparerTravail(false);
 }
 
 function recommencer(): void {
@@ -376,6 +517,8 @@ function recommencer(): void {
   modeDeco = false;
   decoChoisie = null;
   conseilsDonnes.clear();
+  chantier.clear();
+  quitterTravail();
   menus.fermer();
   if (chat) vue.scene.remove(chat.objet);
   chat = null;
@@ -397,7 +540,7 @@ function proposerLeChoix(): void {
         installerChat(personnage);
         el('choix').hidden = true;
         rafraichir();
-        hud.message('Touche une parcelle pour la bêcher');
+        hud.message('Touche une parcelle : ton chat ira y travailler');
       });
       cartes.append(carte);
     }
@@ -407,6 +550,8 @@ function proposerLeChoix(): void {
 
 // En portrait, on conseille le paysage sans bloquer.
 el('rotate-skip').addEventListener('click', () => el('rotate').classList.add('ferme'));
+
+installerPleinEcran(el<HTMLButtonElement>('btn-plein-ecran'), (texte) => hud.message(texte));
 
 // ---------------------------------------------------------------- Démarrage et boucle d'affichage
 
@@ -429,6 +574,19 @@ function boucle(): void {
   }
   animerNuit(dt);
 
+  // La jauge du geste en cours flotte au-dessus de la tête du chat.
+  if (travail && chat && !nuit) {
+    pointEcran.set(chat.objet.position.x, 1.95, chat.objet.position.z).project(vue.camera);
+    hud.jauge({
+      x: ((pointEcran.x + 1) / 2) * window.innerWidth,
+      y: ((1 - pointEcran.y) / 2) * window.innerHeight,
+      progres: travail.progres,
+      icone: iconeOutil(OUTIL_DU_GESTE[travail.geste], niveauOutil(travail.geste)),
+    });
+  } else {
+    hud.jauge(null);
+  }
+
   calculerAmbiance(ambiance, saisonDuJour(state.jour), state.meteo, obscurite);
   vue.appliquerAmbiance(ambiance);
   monde.appliquerAmbiance(ambiance);
@@ -443,4 +601,4 @@ function boucle(): void {
 boucle();
 
 // Pour les tests automatiques uniquement : permet d'inspecter et de modifier la partie depuis la console.
-(window as unknown as Record<string, unknown>).__ferme = { state, rafraichir, vue };
+(window as unknown as Record<string, unknown>).__ferme = { state, rafraichir, vue, chantier };

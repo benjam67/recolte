@@ -105,6 +105,48 @@ body.nuit #ui > :not(#reveil) {
   flex: none;
 }
 
+/* Bouton plein écran, en haut à droite. */
+#btn-plein-ecran {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 248, 234, 0.92);
+  box-shadow: 0 2px 0 var(--ombre);
+}
+
+/* La jauge du geste en cours : un anneau qui se remplit autour de l'outil. */
+#jauge {
+  --p: 0;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 58px;
+  height: 58px;
+  margin: -29px 0 0 -29px;
+  padding: 7px;
+  border-radius: 50%;
+  background: conic-gradient(var(--orange) calc(var(--p) * 1turn), rgba(255, 248, 234, 0.95) 0);
+  box-shadow: 0 3px 0 var(--ombre);
+  pointer-events: none !important;
+}
+
+#jauge img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 5px;
+  border-radius: 50%;
+  background: var(--creme);
+}
+
 /* ------------------------------------------------------------ Boutons du jeu */
 
 #hud-boutons {
@@ -407,6 +449,13 @@ body.nuit #ui > :not(#reveil) {
   margin: 0;
   padding: 6px 6px 10px;
   font-size: 20px;
+}
+
+#menu-pastille {
+  flex: none;
+  margin-bottom: 6px;
+  background: var(--creme);
+  box-shadow: none;
 }
 
 #menu-fermer {

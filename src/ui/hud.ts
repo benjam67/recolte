@@ -30,6 +30,8 @@ export interface Hud {
   modeNuit(actif: boolean): void;
   /** Place le soleil et la lune. `t` va de 0 (coucher) à 1 (réveil) ; null pour les cacher. */
   astres(t: number | null): void;
+  /** Montre la jauge du geste en cours à cet endroit de l'écran (null pour la cacher). */
+  jauge(geste: { x: number; y: number; progres: number; icone: string } | null): void;
   /** Affiche ou cache la barre du mode décoration. */
   barreDeco(state: GameState | null, choisie: DecoId | null): void;
   surSac(action: () => void): void;
@@ -54,6 +56,9 @@ export function creerHud(): Hud {
   const reveil = el('reveil');
   const soleil = el('soleil');
   const lune = el('lune');
+  const jauge = el('jauge');
+  const imageJauge = jauge.querySelector('img')!;
+  let iconeJauge = '';
 
   let minuterieToast = 0;
   let minuterieReveil = 0;
@@ -128,6 +133,17 @@ export function creerHud(): Hud {
       if (t < 0.5) placer(soleil, 0.5 + (t / 0.3) * 0.5);
       else placer(soleil, ((t - 0.7) / 0.3) * 0.5);
       placer(lune, (t - 0.2) / 0.6);
+    },
+
+    jauge(geste) {
+      jauge.hidden = geste === null;
+      if (!geste) return;
+      if (geste.icone !== iconeJauge) {
+        iconeJauge = geste.icone;
+        imageJauge.src = geste.icone;
+      }
+      jauge.style.transform = `translate(${geste.x}px, ${geste.y}px)`;
+      jauge.style.setProperty('--p', String(Math.min(1, geste.progres)));
     },
 
     barreDeco(state, choisie) {
