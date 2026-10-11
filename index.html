@@ -6,26 +6,52 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#bfe3f2" />
+    <meta name="theme-color" content="#a2d67e" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&display=swap" />
     <title>Ferme aux chats</title>
   </head>
   <body>
     <canvas id="scene"></canvas>
+
     <div id="ui">
       <div id="hud-haut">
         <span class="pastille" id="hud-jour"></span>
-        <span class="pastille">🪙 <span id="hud-argent">0</span></span>
-        <span class="pastille">🌰 Graines <span id="hud-graines">0</span></span>
-        <span class="pastille">🧺 Radis <span id="hud-radis">0</span></span>
+        <span class="pastille" id="hud-meteo"></span>
+        <span class="pastille"><i class="piece"></i><span id="hud-argent">0</span></span>
       </div>
+      <div id="graines"></div>
       <div id="hud-boutons">
-        <button id="btn-acheter" type="button">Acheter une graine</button>
-        <button id="btn-vendre" type="button">Vendre la récolte</button>
+        <button id="btn-sac" type="button">Sac et boutique</button>
+        <button id="btn-deco" type="button" hidden>Décorer</button>
         <button id="btn-dormir" type="button">Dormir 🌙</button>
       </div>
+      <div id="barre-deco" hidden>
+        <p id="deco-aide"></p>
+        <div id="deco-choix"></div>
+        <button id="deco-fin" type="button">Terminer</button>
+      </div>
       <div id="toast" role="status"></div>
+      <div id="reveil" role="status"></div>
     </div>
-    <div id="nuit"><div id="nuit-texte"></div></div>
+
+    <div id="astres"><div id="soleil"></div><div id="lune"></div></div>
+
+    <div id="menu" hidden>
+      <div class="panneau">
+        <header>
+          <nav id="onglets"></nav>
+          <button id="menu-fermer" type="button" aria-label="Fermer">✕</button>
+        </header>
+        <div id="menu-contenu" class="liste"></div>
+      </div>
+    </div>
+
+    <div id="choix" hidden>
+      <h1>Choisis ton chat</h1>
+      <div id="choix-cartes"></div>
+      <p>Les deux jouent exactement pareil.</p>
+    </div>
+
     <div id="rotate">
       <div class="rotate-icon">↻</div>
       <p>Tourne ton téléphone en paysage</p>
