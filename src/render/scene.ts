@@ -3,7 +3,7 @@ import * as THREE from 'three';
 // Hauteur du monde visible à l'écran, en unités de jeu (1 unité = 1 case).
 const HAUTEUR_VISIBLE = 7;
 // Le point du monde placé au centre de l'écran : entre la maison et le champ.
-const CENTRE_VUE = { x: -1.2, z: 0.2 };
+const CENTRE_VUE = { x: -1.9, z: -0.5 };
 
 export interface Scene3D {
   scene: THREE.Scene;
