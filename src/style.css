@@ -207,11 +207,45 @@ body.nuit #ui > :not(#reveil) {
   gap: 6px;
 }
 
-#graines {
+/* La barre des quatre outils, en bas à gauche. */
+#outils {
   position: absolute;
   left: max(12px, env(safe-area-inset-left));
   bottom: max(12px, env(safe-area-inset-bottom));
-  max-width: 46vw;
+  display: flex;
+  gap: 8px;
+}
+
+#outils .jeton {
+  width: 58px;
+  height: 58px;
+}
+
+#outils .jeton.choisi {
+  transform: translateY(-6px);
+  box-shadow: 0 9px 0 var(--ombre);
+}
+
+/* Le choix de la graine s'ouvre au-dessus de la barre d'outils. */
+#graines {
+  position: absolute;
+  left: max(12px, env(safe-area-inset-left));
+  bottom: calc(max(12px, env(safe-area-inset-bottom)) + 76px);
+  max-width: 56vw;
+  padding: 8px;
+  border-radius: 18px;
+  background: rgba(255, 248, 234, 0.95);
+  box-shadow: 0 3px 0 var(--ombre);
+}
+
+#graines:empty::before {
+  content: 'Aucune graine : passe à la boutique';
+  font-weight: 700;
+  color: var(--brun-clair);
+}
+
+#graines .jeton {
+  background: var(--creme-fonce);
 }
 
 .jeton {

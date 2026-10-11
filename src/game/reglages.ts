@@ -25,17 +25,17 @@ export const DEPART = {
 
 // ---------------------------------------------------------------- Gestes
 
-/**
- * L'effort demandé pour chaque geste. Plus le nombre est grand, plus le geste est long.
- * Pour tout ralentir ou accélérer d'un coup, change plutôt DISTANCE_PAR_EFFORT.
- */
-export const EFFORT = { becher: 1, semer: 0.5, arroser: 0.7, recolter: 0.6 };
-
-/** La distance à frotter du doigt pour un effort de 1, en hauteurs d'écran. */
-export const DISTANCE_PAR_EFFORT = 2.5;
-
-/** Ce qu'un simple toucher fait avancer : 0.25 = quatre touchers pour un effort de 1. */
-export const EFFORT_PAR_TOUCHER = 0.25;
+/** La durée de chaque geste. C'est ici qu'on rend le travail aux champs plus long ou plus court. */
+export const GESTES = {
+  /** Bêche : nombre de passages du doigt sur une case pour la bêcher. */
+  passagesBeche: 3,
+  /** Arrosoir : secondes à garder le doigt appuyé sur une case. */
+  secondesArrosage: 0.9,
+  /** Panier : hauteur à tirer vers le haut pour arracher une plante, en part de la hauteur de l'écran. */
+  hauteurArrachage: 0.16,
+  /** Un outil de ce niveau travaille deux fois plus vite. */
+  niveauRapide: 3,
+};
 
 // ---------------------------------------------------------------- Cultures
 
@@ -96,7 +96,7 @@ export const IDS_OUTILS = Object.keys(OUTILS) as OutilId[];
 
 /** Prix pour passer au niveau 2, puis au niveau 3. */
 export const PRIX_NIVEAUX_OUTIL = [150, 500];
-export const EFFETS_NIVEAUX_OUTIL = ['1 case par geste', '3 cases en ligne', '9 cases en carré'];
+export const EFFETS_NIVEAUX_OUTIL = ['1 case de large', '3 cases de large', '3 cases de large, deux fois plus vite'];
 
 /** Les tailles de terrain, de la première à la dernière. */
 export const TERRAINS = [

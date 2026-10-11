@@ -19,10 +19,20 @@ points de décision de la roadmap (fin des phases 1, 2 et 6) restent à passer.
 - Phase 6 (tutoriel, sons, équilibrage) et phase 7 (stores) : pas commencées. Seuls quelques conseils
   s'affichent pendant les trois premiers jours.
 
-Retours du premier test (11 octobre), intégrés : les gestes demandent de frotter la parcelle (ou de la
-toucher plusieurs fois) et la terre change au fur et à mesure ; le chat tient l'outil du geste ; il faut
-rebêcher après une récolte ; l'argent est visible dans le menu ; plein écran (bouton sur Android, ajout à
-l'écran d'accueil sur iPhone). La durée des gestes se règle dans `EFFORT` et `DISTANCE_PAR_EFFORT`.
+Retours des tests du 11 octobre, intégrés :
+
+- Le joueur choisit son outil dans une barre (bêche, graines, arrosoir, panier) et chaque outil a son geste :
+  glisser pour bêcher (3 passages), toucher ou glisser pour semer, maintenir pour arroser, tirer vers le haut
+  pour récolter. Les durées sont dans `GESTES` (`src/game/reglages.ts`).
+- Le geste agit sous le doigt sans attendre le chat, qui court derrière avec l'outil en main.
+- La terre montre l'avancement (sillons, graines, humidité) ; il faut rebêcher après une récolte.
+- Outils améliorés : 3 cases de large au niveau 2, deux fois plus vite au niveau 3.
+- Argent visible dans le menu ; plein écran (bouton sur Android, ajout à l'écran d'accueil sur iPhone).
+
+Souhaits du joueur pour plus tard, **à ne pas construire sans qu'il le demande**, mais à garder en tête pour
+ne pas fermer la porte : une ferme qui grossit beaucoup plus que 6 × 6, l'arrosage automatique, un tracteur.
+Aujourd'hui la limite de taille vient de `TAILLE_MAX` (`src/game/terrain.ts`), de la liste `TERRAINS` et du
+cadrage fixe de la caméra (`src/render/scene.ts`).
 
 Le jeu est en ligne sur https://benjam67.github.io/recolte/ : chaque push sur `main` le met à jour.
 

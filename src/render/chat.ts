@@ -258,8 +258,8 @@ function construire(personnage: Personnage) {
 
 export interface Chat {
   objet: THREE.Group;
-  /** Avance vers (x, z). Renvoie true quand le chat est arrivé. */
-  avancerVers(x: number, z: number, dt: number): boolean;
+  /** Avance vers (x, z). Renvoie true quand le chat est arrivé. `hate` > 1 le fait courir. */
+  avancerVers(x: number, z: number, dt: number, hate?: number): boolean;
   /** Tourne le chat vers (x, z) sans le déplacer. */
   regarderVers(x: number, z: number): void;
   /** Petit saut pour marquer un geste terminé. */
@@ -290,11 +290,11 @@ export function creerChat(personnage: Personnage): Chat {
     if (Math.abs(dx) + Math.abs(dz) > 0.001) directionVoulue = Math.atan2(dx, dz);
   }
 
-  function avancerVers(x: number, z: number, dt: number): boolean {
+  function avancerVers(x: number, z: number, dt: number, hate = 1): boolean {
     const dx = x - objet.position.x;
     const dz = z - objet.position.z;
     const distance = Math.hypot(dx, dz);
-    const pas = VITESSE * dt;
+    const pas = VITESSE * hate * dt;
     if (distance <= pas) {
       objet.position.x = x;
       objet.position.z = z;
@@ -344,7 +344,7 @@ export function creerChat(personnage: Personnage): Chat {
     }
     // Un outil en main : le bras droit le tient devant lui, et l'agite quand le chat travaille.
     tempsTravail = Math.max(0, tempsTravail - dt);
-    if (enMain && allure < 0.5) {
+    if (enMain && (allure < 0.5 || tempsTravail > 0)) {
       const force = Math.min(1, tempsTravail / 0.15);
       const repos = enMain === 'beche' ? -0.75 : -1.05;
       m.brasD.rotation.x = repos + Math.sin(temps * 19) * 0.5 * force;

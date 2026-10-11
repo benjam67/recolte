@@ -13,8 +13,11 @@ import {
   type Meteo,
 } from '../game/reglages';
 import { annee, jourDeSaison, saisonDuJour, type GameState } from '../game/state';
-import { iconeCulture, iconeDeco } from '../render/dessins';
+import type { OutilEnMain } from '../render/chat';
+import { iconeCulture, iconeDeco, iconeOutil } from '../render/dessins';
 
+const NOMS_OUTILS: Record<OutilEnMain, string> = { beche: 'Bêche', graines: 'Graines', arrosoir: 'Arrosoir', panier: 'Panier' };
+const ORDRE_OUTILS: OutilEnMain[] = ['beche', 'graines', 'arrosoir', 'panier'];
 const ICONES_METEO: Record<Meteo, string> = { soleil: '☀️ Soleil', pluie: '🌧️ Pluie', neige: '❄️ Neige' };
 
 export function el<T extends HTMLElement = HTMLElement>(id: string): T {
@@ -22,7 +25,8 @@ export function el<T extends HTMLElement = HTMLElement>(id: string): T {
 }
 
 export interface Hud {
-  mettreAJour(state: GameState): void;
+  /** `outil` est l'outil en main ; `choixGraines` dit si le choix de la graine est ouvert. */
+  mettreAJour(state: GameState, outil: OutilEnMain, choixGraines: boolean): void;
   message(texte: string): void;
   /** Annonce du matin, au centre de l'écran. */
   reveil(titre: string, lignes: string[]): void;
@@ -39,6 +43,7 @@ export interface Hud {
   surDecorer(action: () => void): void;
   surFinDeco(action: () => void): void;
   surGraine(action: (id: CultureId) => void): void;
+  surOutil(action: (outil: OutilEnMain) => void): void;
   surChoixDeco(action: (id: DecoId) => void): void;
 }
 
@@ -47,6 +52,9 @@ export function creerHud(): Hud {
   const meteo = el('hud-meteo');
   const argent = el('hud-argent');
   const graines = el('graines');
+  const outils = el('outils');
+  let cleOutils = '';
+  let enJeu = true;
   const boutons = el('hud-boutons');
   const btnDeco = el<HTMLButtonElement>('btn-deco');
   const barre = el('barre-deco');
@@ -78,7 +86,7 @@ export function creerHud(): Hud {
   }
 
   return {
-    mettreAJour(state) {
+    mettreAJour(state, outil, choixGraines) {
       const saison = saisonDuJour(state.jour);
       jour.textContent = `${NOMS_SAISONS[saison]} · jour ${jourDeSaison(state.jour)}/${JOURS_PAR_SAISON} · an ${annee(state.jour)}`;
       meteo.textContent = ICONES_METEO[state.meteo];
@@ -100,6 +108,20 @@ export function creerHud(): Hud {
           })
           .join('');
       }
+
+      // La barre d'outils. Le sachet montre la graine qui sera semée.
+      const niveaux: Record<OutilEnMain, number> = { ...state.outils, graines: 1 };
+      const cleBarre = `${outil}|${aSemer}|${aSemer ? state.graines[aSemer] : 0}|${JSON.stringify(state.outils)}`;
+      if (cleBarre !== cleOutils) {
+        cleOutils = cleBarre;
+        outils.innerHTML = ORDRE_OUTILS.map((id) => {
+          const image = id === 'graines' && aSemer ? iconeCulture(aSemer) : iconeOutil(id, niveaux[id]);
+          const pastille = id === 'graines' && aSemer ? `<b>${state.graines[aSemer]}</b>` : '';
+          return `<button type="button" class="jeton${id === outil ? ' choisi' : ''}" data-outil="${id}" aria-label="${NOMS_OUTILS[id]}">
+            <img src="${image}" alt="" />${pastille}</button>`;
+        }).join('');
+      }
+      graines.hidden = !(enJeu && choixGraines);
 
       const aDesDecos = state.decoPosees.length > 0 || IDS_DECOS.some((id) => state.decoStock[id] > 0);
       btnDeco.hidden = !aDesDecos;
@@ -149,7 +171,9 @@ export function creerHud(): Hud {
     barreDeco(state, choisie) {
       barre.hidden = state === null;
       boutons.hidden = state !== null;
-      graines.hidden = state !== null;
+      outils.hidden = state !== null;
+      enJeu = state === null;
+      if (!enJeu) graines.hidden = true;
       if (!state) {
         cleDeco = '';
         return;
@@ -179,6 +203,11 @@ export function creerHud(): Hud {
       graines.addEventListener('click', (e) => {
         const jeton = (e.target as HTMLElement).closest<HTMLElement>('.jeton');
         if (jeton?.dataset.id) action(jeton.dataset.id as CultureId);
+      }),
+    surOutil: (action) =>
+      outils.addEventListener('click', (e) => {
+        const jeton = (e.target as HTMLElement).closest<HTMLElement>('.jeton');
+        if (jeton?.dataset.outil) action(jeton.dataset.outil as OutilEnMain);
       }),
     surChoixDeco: (action) =>
       decoChoix.addEventListener('click', (e) => {
