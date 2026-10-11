@@ -24,7 +24,7 @@ interface Apparence {
 /** Ce qui distingue les deux chats. À ajuster quand tu auras décidé de leur look. */
 export const APPARENCES: Record<Personnage, Apparence> = {
   chat: {
-    nom: 'Chat',
+    nom: 'Basile',
     pelage: '#8f9bb3',
     pelageFonce: '#6f7b96',
     ventre: '#eef0f4',
@@ -32,7 +32,7 @@ export const APPARENCES: Record<Personnage, Apparence> = {
     couleurAccessoire: '#e2574c',
   },
   chatte: {
-    nom: 'Chatte',
+    nom: 'Capucine',
     pelage: '#f0a558',
     pelageFonce: '#d98236',
     ventre: '#fff1dc',

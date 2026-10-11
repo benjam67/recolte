@@ -37,7 +37,7 @@ cadrage fixe de la caméra (`src/render/scene.ts`).
 Le jeu est en ligne sur https://benjam67.github.io/recolte/ : chaque push sur `main` le met à jour.
 
 Décisions prises par défaut, à confirmer par le joueur : contrôle au toucher ; hiver avec ses trois
-cultures ; français seul ; chat gris à foulard rouge et chatte rousse à fleur rose ; une graine ne peut
+cultures ; français seul ; Basile, chat gris à foulard rouge, et Capucine, chatte rousse à fleur rose (noms validés) ; une graine ne peut
 pas être semée s'il reste trop peu de nuits pour qu'elle mûrisse ; la neige n'arrose pas.
 
 Mettre cette section à jour à la fin de chaque session.
