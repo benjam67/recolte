@@ -6,8 +6,11 @@ légumes et fleurs, les vend, agrandit son terrain et améliore ses outils. La r
 
 ## Où on en est
 
-- Phase 0 (mise en place) : faite quand le cube s'affiche sur le téléphone via un lien.
-- Phase suivante : 1, boucle de base, en formes grises (pas d'images définitives avant la fin de la phase 1).
+- Phase 0 (mise en place) : faite.
+- Phase 1 (boucle de base) : codée, en attente du test du joueur (« 5 journées sans bug et l'envie d'en
+  jouer une sixième »). Une culture (radis), geste automatique selon l'état de la parcelle, vente et achat
+  par boutons, nuit en fondu. Pas encore de sauvegarde (phase 3).
+- Ensuite : corriger ce que le test révèle, puis phase 2 (style visuel).
 
 Mettre cette section à jour à la fin de chaque session.
 
@@ -24,7 +27,7 @@ Mettre cette section à jour à la fin de chaque session.
 2. **Les règles du jeu ne connaissent pas l'affichage.** `src/game/` n'importe ni `three` ni le DOM.
    `src/render/` lit l'état et dessine ; il ne le modifie pas.
 3. **Les réglages dans un fichier de données.** Prix, durées de pousse, coûts : un seul fichier
-   (`src/game/reglages.ts`, à créer en phase 1), modifiable sans toucher au code.
+   (`src/game/reglages.ts`), modifiable sans toucher au code.
 4. **Menus en HTML/CSS** dans `#ui`, par-dessus le canvas. Pas de menus dessinés en 3D.
 5. **La caméra ne tourne jamais.** Orthographique, fixe. Plantes et décorations sont des images debout.
 6. **Téléphone d'abord.** Paysage, tactile (toucher l'endroit où aller), peu d'objets à l'écran,

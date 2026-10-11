@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 
 // Hauteur du monde visible à l'écran, en unités de jeu (1 unité = 1 case).
-const HAUTEUR_VISIBLE = 9;
+const HAUTEUR_VISIBLE = 7;
+// Le point du monde placé au centre de l'écran : entre la maison et le champ.
+const CENTRE_VUE = { x: -1.2, z: 0.2 };
 
 export interface Scene3D {
   scene: THREE.Scene;
@@ -23,8 +25,8 @@ export function creerScene(canvas: HTMLCanvasElement): Scene3D {
 
   // Caméra isométrique fixe : elle ne tourne jamais (les plantes seront des images plates).
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
-  camera.position.set(10, 10, 10);
-  camera.lookAt(0, 0, 0);
+  camera.position.set(CENTRE_VUE.x + 10, 10, CENTRE_VUE.z + 10);
+  camera.lookAt(CENTRE_VUE.x, 0, CENTRE_VUE.z);
 
   // Lumière : douce partout + soleil en haut à gauche de l'écran,
   // comme dans les règles des images générées.
